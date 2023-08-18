@@ -11,13 +11,43 @@ $database = mysqli_select_db($connection, DB_DATABASE);
 
 VerifyPersonsTable($connection, DB_DATABASE);
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if ($_SERVER["REQUEST_METHOD"] == "POST" && $_POST['operacao']=="criar") {
     $name = mysqli_real_escape_string($connection, $_POST['Name']);
     $age = mysqli_real_escape_string($connection, $_POST['Age']);
     $email = mysqli_real_escape_string($connection, $_POST['Email']);
 
     if (!empty($name)) {
         AddPerson($connection, $name, $age, $email);
+    }
+}else if($_SERVER["REQUEST_METHOD"] == "POST" && $_POST['operacao']=="editar") {
+    $id = mysqli_real_escape_string($connection, $_POST['ID']);
+    $newName = mysqli_real_escape_string($connection, $_POST['EditName']);
+    $newAge = mysqli_real_escape_string($connection, $_POST['EditAge']);
+    $newEmail = mysqli_real_escape_string($connection, $_POST['EditEmail']);
+
+    UpdatePerson($connection, $id, $newName, $newAge, $newEmail);
+}else if($_SERVER["REQUEST_METHOD"] == "POST" && $_POST['operacao']=="deletar") {
+
+    error_log("Teste de mensagem de depuração");
+    $id = mysqli_real_escape_string($connection, $_POST['id']);
+
+    $query = "DELETE FROM Persons WHERE ID = $id";
+
+    if (mysqli_query($connection, $query)) {
+        // Successful deletion
+        header("Location: {$_SERVER['HTTP_REFERER']}"); // Redirect back to the previous page
+        exit();
+    } else {
+        // Error deleting record
+        echo "Error deleting record: " . mysqli_error($connection);
+    }
+}
+
+function UpdatePerson($connection, $id, $newName, $newAge, $newEmail) {
+    $query = "UPDATE Persons SET Name='$newName', Age='$newAge', Email='$newEmail' WHERE ID='$id'";
+
+    if (!mysqli_query($connection, $query)) {
+        echo("Error updating person data.");
     }
 }
 
@@ -62,16 +92,27 @@ function TableExists($tableName, $connection, $dbName) {
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
         }
         h1, h2 {
             text-align: center;
+            margin: 20px 0;
         }
         form {
             margin-bottom: 20px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         table {
             width: 100%;
             border-collapse: collapse;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         th, td {
             padding: 8px;
@@ -93,6 +134,17 @@ function TableExists($tableName, $connection, $dbName) {
         .edit-buttons button {
             padding: 5px 10px;
             cursor: pointer;
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .edit-buttons button:hover {
+            background-color: #2980b9;
+        }
+        .edit-buttons button:active {
+            transform: scale(0.95);
         }
         .edit-form {
             display: none;
@@ -117,8 +169,9 @@ function TableExists($tableName, $connection, $dbName) {
 
     <label for="Email">Email:</label>
     <input type="email" name="Email"><br><br>
-
+    <input type="hidden" value="criar" name="operacao">
     <input type="submit" value="Add Person">
+
 </form>
 
 <!-- Display table data -->
@@ -156,7 +209,7 @@ function TableExists($tableName, $connection, $dbName) {
 <!-- Edit form -->
 <div class="edit-form" id="editForm">
     <h3>Edit Person</h3>
-    <form action="#" method="POST">
+    <form action="<?php echo $_SERVER['SCRIPT_NAME'] ?>" method="POST">
         <input type="hidden" name="ID" id="editID">
         <label for="EditName">Name:</label>
         <input type="text" name="EditName" id="editName" required><br><br>
@@ -167,10 +220,18 @@ function TableExists($tableName, $connection, $dbName) {
         <label for="EditEmail">Email:</label>
         <input type="email" name="EditEmail" id="editEmail"><br><br>
 
-        <div class="edit-buttons">
-            <button id="cancelEdit">Cancel</button>
-            <input type="submit" value="Save">
-        </div>
+        <input type="hidden" value="editar" name="operacao">
+        <button id="cancelEdit">Cancel</button>
+        <input type="submit" value="Save">
+        
+    </form>
+</div>
+
+<div style="display: none;">
+    <form action="<?php echo $_SERVER['SCRIPT_NAME'] ?>" method="POST" id="deleteForm">
+        <input type="hidden" value="deletar" name="operacao">
+        <input type="hidden" id="idPerson" name="id">
+        <button type="submit">Submit</button>
     </form>
 </div>
 
@@ -200,50 +261,12 @@ function TableExists($tableName, $connection, $dbName) {
         editForm.style.display = 'none';
     });
 
-    // Adicionar evento de envio de formulário de edição
-    document.getElementById('editForm').addEventListener('submit', function(event) {
-        event.preventDefault(); // Evitar o envio padrão do formulário
-
-        const id = editID.value;
-        const newName = editName.value;
-        const newAge = editAge.value;
-        const newEmail = editEmail.value;
-
-        // Enviar dados do formulário de edição para o backend
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'Edit.php', true); // Substitua 'edit.php' pela URL correta
-        xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                if (xhr.status === 200) {
-                    // Atualizar a tabela com os dados atualizados
-                    updateTable();
-                    editForm.style.display = 'none'; // Esconder o formulário de edição
-                } else {
-                    alert('Error editing person.'); // Lidar com erro, se necessário
-                }
-            }
-        };
-        xhr.send(`ID=${id}&EditName=${newName}&EditAge=${newAge}&EditEmail=${newEmail}`);
-    });
-
     deleteButtons.forEach(button => {
         button.addEventListener('click', () => {
             const id = button.getAttribute('data-id');
-            if (confirm('Are you sure you want to delete this person?')) {
-                const xhr = new XMLHttpRequest();
-                xhr.open('GET', `Delete.php?id=${id}`, true); // Substitua 'delete.php' pela URL correta
-                xhr.onreadystatechange = function() {
-                    if (xhr.readyState === XMLHttpRequest.DONE) {
-                        if (xhr.status === 200) {
-                            // Atualizar a tabela removendo o registro excluído
-                            updateTable();
-                        } else {
-                            alert('Error deleting person.'); // Lidar com erro, se necessário
-                        }
-                    }
-                };
-                xhr.send();
+            if (confirm('Are you sure you want to delete this person?')) {   
+                document.getElementById("idPerson").value = id
+                document.getElementById("deleteForm").submit();
             }
         });
     });
@@ -252,23 +275,6 @@ function TableExists($tableName, $connection, $dbName) {
         editForm.style.display = 'none';
     });
 
-    // Função para atualizar a tabela com os dados mais recentes
-    function updateTable() {
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', 'GetData.php', true); // Substitua 'get_data.php' pela URL correta para recuperar dados
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                if (xhr.status === 200) {
-                    // Atualizar o conteúdo da tabela com os dados mais recentes
-                    const tableBody = document.querySelector('table tbody');
-                    tableBody.innerHTML = xhr.responseText;
-                } else {
-                    alert('Error updating table.'); // Lidar com erro, se necessário
-                }
-            }
-        };
-        xhr.send();
-    }
 </script>
 </body>
 </html>
