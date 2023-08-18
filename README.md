@@ -60,3 +60,6 @@ O arquivo também contém código JavaScript que adiciona interatividade à pág
 Estes arquivos foram instanciados na EC2 Linux com o RDS MySql, o banco de dados foi acessado com o uso das credenciais do banco de dados do arquivo dbinfo.inc.
 
 O EC2 e o RDS foi configurado conforme o [tutorial](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/TUT_WebAppWithRDS.html) disponibilizado na atividade ponderada.
+
+
+Segue o [vídeo](https://drive.google.com/file/d/1u4CRzECCVKilYC5XvGe4aN6Cgh-vY71R/view?usp=sharing) de explicação da arquitetura.
